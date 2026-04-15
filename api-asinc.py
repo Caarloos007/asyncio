@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 import time
 
-# 1. Definimos las APIs que vamos a consultar (mínimo 5)
+# 1. Definimos las 5 APIs públicas a consultar
 APIS_A_CONSULTAR = [
     {"nombre": "Chuck Norris", "url": "https://api.chucknorris.io/jokes/random", "headers": {}},
     {"nombre": "Dato de Gato", "url": "https://catfact.ninja/fact", "headers": {}},
@@ -11,7 +11,7 @@ APIS_A_CONSULTAR = [
     {"nombre": "Predicción Edad", "url": "https://api.agify.io?name=fausto", "headers": {}}
 ]
 
-# 2. Función asíncrona para hacer UNA petición
+# 2. Función asíncrona para hacer cada petición individualmente
 async def consultar_api(session, api_info):
     nombre = api_info["nombre"]
     url = api_info["url"]
@@ -21,12 +21,12 @@ async def consultar_api(session, api_info):
     timeout = aiohttp.ClientTimeout(total=5)
 
     try:
-        # Hacemos la petición GET
+        # Petición GET asíncrona
         async with session.get(url, headers=headers, timeout=timeout) as response:
-            response.raise_for_status() # Comprueba si hay errores HTTP (404, 500...)
+            response.raise_for_status() # Lanza error si el código HTTP no es 200 OK
             data = await response.json()
 
-            # Extraemos la información relevante según la API
+            # Extracción limpia de la información según la API
             resultado = ""
             if nombre == "Chuck Norris":
                 resultado = data.get("value")
@@ -41,7 +41,7 @@ async def consultar_api(session, api_info):
 
             return {"nombre": nombre, "estado": "OK", "datos": resultado}
 
-    # 3. Manejo de errores
+    # 3. Manejo de errores de red o timeouts
     except asyncio.TimeoutError:
         return {"nombre": nombre, "estado": "ERROR", "datos": "Tiempo de espera agotado (Timeout)."}
     except aiohttp.ClientError as e:
@@ -49,22 +49,21 @@ async def consultar_api(session, api_info):
     except Exception as e:
         return {"nombre": nombre, "estado": "ERROR", "datos": f"Error inesperado: {e}"}
 
-# 4. Función principal que lanza todo
+# 4. Función principal que orquesta la concurrencia
 async def main():
-    print("Iniciando recolección de datos asíncrona...\n")
     inicio = time.perf_counter()
 
-    # Creamos una única sesión para todas las peticiones (buena práctica)
+    # Se usa una única sesión HTTP para mejorar el rendimiento
     async with aiohttp.ClientSession() as session:
-        # Preparamos las tareas
+        # Preparamos la lista de tareas a ejecutar
         tareas = [consultar_api(session, api) for api in APIS_A_CONSULTAR]
         
-        # Lanzamos todas las peticiones CONCURRENTEMENTE
+        # Lanzamos las 5 peticiones de forma CONCURRENTE
         resultados = await asyncio.gather(*tareas)
 
     fin = time.perf_counter()
 
-    # 5. Presentación original y legible
+    # 5. Imprimir resultados con la presentación requerida
     print("=" * 60)
     print(" RESULTADOS DEL DASHBOARD MULTI-API ")
     print("=" * 60)
@@ -77,7 +76,7 @@ async def main():
 
     print("=" * 60)
     print(f"Tiempo total de ejecución: {fin - inicio:.2f} segundos")
-    print("=" * 60)
 
 if __name__ == "__main__":
+    # Inicia el bucle de eventos (event loop)
     asyncio.run(main())
