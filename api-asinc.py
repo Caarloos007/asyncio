@@ -2,13 +2,16 @@ import asyncio
 import aiohttp
 import time
 
-# 1. Definimos las 5 APIs públicas a consultar
+# 1. Definimos las APIs públicas a consultar
 APIS_A_CONSULTAR = [
     {"nombre": "Chuck Norris", "url": "https://api.chucknorris.io/jokes/random", "headers": {}},
     {"nombre": "Dato de Gato", "url": "https://catfact.ninja/fact", "headers": {}},
     {"nombre": "Chiste Corto", "url": "https://icanhazdadjoke.com/", "headers": {"Accept": "application/json"}},
     {"nombre": "Foto de Perro", "url": "https://dog.ceo/api/breeds/image/random", "headers": {}},
-    {"nombre": "Predicción Edad", "url": "https://api.agify.io?name=fausto", "headers": {}}
+    {"nombre": "Predicción Edad", "url": "https://api.agify.io?name=fausto", "headers": {}},
+    {"nombre": "Usuario Aleatorio", "url": "https://randomuser.me/api/", "headers": {}},
+    {"nombre": "Post de JSONPlaceholder", "url": "https://jsonplaceholder.typicode.com/posts/1", "headers": {}},
+    {"nombre": "Clima Actual", "url": "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current_weather=true", "headers": {}},
 ]
 
 # 2. Función asíncrona para hacer cada petición individualmente
@@ -38,6 +41,19 @@ async def consultar_api(session, api_info):
                 resultado = f"URL de la imagen: {data.get('message')}"
             elif nombre == "Predicción Edad":
                 resultado = f"A la gente llamada {data.get('name').capitalize()} se le estima una edad de {data.get('age')} años."
+            elif nombre == "Usuario Aleatorio":
+                user = data.get("results", [{}])[0]
+                name = user.get("name", {})
+                resultado = f"Usuario: {name.get('first', '')} {name.get('last', '')}"
+            elif nombre == "Post de JSONPlaceholder":
+                resultado = data.get("title", "")
+            elif nombre == "Clima Actual":
+                weather = data.get("current_weather", {})
+                resultado = f"Temperatura: {weather.get('temperature', '')}°C"
+            elif nombre == "Frase Inspiracional":
+                resultado = data.get("content", "")
+            elif nombre == "Número Aleatorio":
+                resultado = data.get("text", "")
 
             return {"nombre": nombre, "estado": "OK", "datos": resultado}
 
@@ -55,10 +71,13 @@ async def main():
 
     # Se usa una única sesión HTTP para mejorar el rendimiento
     async with aiohttp.ClientSession() as session:
-        # Preparamos la lista de tareas a ejecutar
-        tareas = [consultar_api(session, api) for api in APIS_A_CONSULTAR]
+        # Preparamos la lista de tareas a ejecutar (2 peticiones por API)
+        tareas = []
+        for api in APIS_A_CONSULTAR:
+            for _ in range(2):
+                tareas.append(consultar_api(session, api))
         
-        # Lanzamos las 5 peticiones de forma CONCURRENTE
+        # Lanzamos las peticiones de forma CONCURRENTE
         resultados = await asyncio.gather(*tareas)
 
     fin = time.perf_counter()
